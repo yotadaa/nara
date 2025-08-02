@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql" // Bisa mysql atau sqlite sesuai DB kamu
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique
+  email           String    @unique
+  hashed_password String
+  full_name       String?
+  is_active       Boolean   @default(true)
+  role            String    @default("user")
+  last_login      DateTime?
+  avatar_url      String?
+  api_key         String?   @unique
+  credits         Int       @default(0)
+  quota           Int       @default(10000)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  sessions     SessionChat[]
+  chat_history ChatHistory[]
+  feedbacks    Feedback[]
+}
+
+model SessionChat {
+  id         Int      @id @default(autoincrement())
+  uuid       String   @unique @default(uuid())
+  user_id    Int
+  title      String?
+  status     String   @default("active")
+  model      String?
+  summary    String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user         User          @relation(fields: [user_id], references: [id])
+  chat_history ChatHistory[]
+  feedbacks    Feedback[]
+}
+
+model ChatHistory {
+  id         Int      @id @default(autoincrement())
+  role       String
+  content    String
+  embedding  Json
+  token      Int      @default(0)
+  cost       Decimal  @default(0.0)
+  scope      Int      @default(-1)
+  session_id String
+  model      String?
+  user_id    Int?
+  status     String   @default("success")
+  notes      String?
+  created_at DateTime @default(now())
+  type       Int      @default(0)
+  parent     Int?
+  tools      String?
+  data       Json?
+  metadata   Json?
+
+  session   SessionChat @relation(fields: [session_id], references: [uuid])
+  user      User?       @relation(fields: [user_id], references: [id])
+  feedbacks Feedback[]
+}
+
+model Feedback {
+  id         Int      @id @default(autoincrement())
+  chat_id    Int
+  session_id Int?
+  user_id    Int?
+  rating     Int
+  comment    String?
+  created_at DateTime @default(now())
+
+  chat    ChatHistory  @relation(fields: [chat_id], references: [id])
+  session SessionChat? @relation(fields: [session_id], references: [id])
+  user    User?        @relation(fields: [user_id], references: [id])
+}
