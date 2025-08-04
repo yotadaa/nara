@@ -28,15 +28,17 @@ function ChatBubble({ chat, index, isLatest, chatLoading, placeholder }) {
     return (
         <div
             key={index}
-            className={`relative flex flex-col lg:min-w-[500px] min-w-[300px] w-full ${isUser
+            className={`relative flex flex-col lg:min-w-[500px] min-w-[300px] w-full bg-transparent ${isUser
                 ? "self-end"
                 : "self-end w-full relative px-4 py-5 -left text-white"
                 }`}
         >
-            {!isUser && (
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/40 to-pink-500/20 blur-3xl rounded-xl"></div>
-            )}
 
+            {/* {!isUser && (
+                <div className="-z-50 absolute inset-0 bg-gradient-to-br from-purple-500/40 to-pink-500/20 blur-3xl rounded-xl"></div>
+            )} */}
+
+            {/* <div className="inset-0 bg-gradient-to-br from-purple-500/40 to-pink-500/20 blu"> */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -46,13 +48,16 @@ function ChatBubble({ chat, index, isLatest, chatLoading, placeholder }) {
                     : ""
                     }`}
             >
-                <div className="markdown prose prose-invert max-w-none w-full">
+
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/40 to-pink-500/20 blur-3xl  rounded-xl"></div>
+                <div className="markdown prose prose-invert max-w-none w-full ">
                     {(chat.role === "assistant" && chatLoading && isLatest) && (
                         <>
                             <TypingDots /> {placeholder}
                         </>
                     )}
-                    <div className="markdown">
+                    <div className="markdown   backdrop-blur-sm">
+
                         {chat.role === "assistant" ? (
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
@@ -66,7 +71,7 @@ function ChatBubble({ chat, index, isLatest, chatLoading, placeholder }) {
                                                 language={match[1]}
                                                 PreTag="div"
                                                 {...props}
-                                                className="prose prose-invert max-w-[300px] sm:max-w-[500px] lg:max-w-[750px] text-[0.5rem] sm:text-sm custom-scrollbar"
+                                                className="prose prose-invert max-w-[300px] sm:max-w-[500px] lg:max-w-[750px] text-[0.5rem] sm:text-sm custom-scrollbar bg-transparent"
                                             >
                                                 {String(children).replace(/\n$/, "")}
                                             </SyntaxHighlighter>
@@ -82,6 +87,9 @@ function ChatBubble({ chat, index, isLatest, chatLoading, placeholder }) {
                                             </code>
                                         );
                                     },
+                                    a: ({ node, ...props }) => (
+                                        <a {...props} target="_blank" rel="noopener noreferrer" />
+                                    ),
                                 }}
                             >
                                 {markdown}
@@ -92,7 +100,7 @@ function ChatBubble({ chat, index, isLatest, chatLoading, placeholder }) {
                     </div>
 
                     {chat.role === "assistant" &&
-                        chat.tools !== "null" &&
+                        chat.tools === "scientific-journal-search" &&
                         chat.data?.data?.length > 0 && (
                             <div className="flex flex-col max-h-[400px] overflow-y-scroll custom-scrollbar px-3 my-3 py-3 rounded-2xl backdrop-blur-lg shadow-md border border-gray-700 bg-black/20">
                                 {chat.data.data.map((obj, ind) => (
@@ -100,6 +108,7 @@ function ChatBubble({ chat, index, isLatest, chatLoading, placeholder }) {
                                         key={ind}
                                         className="p-2 space-y-1 bg-gray-800/60 backdrop-blur-lg border border-gray-700 rounded-2xl px-4 py-3 my-1 flex flex-col items-start shadow-lg hover:border-gray-500 transition-all duration-300 gap-0"
                                     >
+
                                         <a href={obj.pdf} target="_blank" rel="noopener noreferrer">
                                             <h2 className="transition-all duration-300 ease-in-out text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 py-0 hover:opacity-80">
                                                 {obj.title}
@@ -133,6 +142,8 @@ function ChatBubble({ chat, index, isLatest, chatLoading, placeholder }) {
                     </div>
                 )}
             </motion.div>
+            {/* <div className="absolute inset-0 bg-gradient-to-br from-purple-500/40 to-pink-500/20 blur-3xl rounded-xl"></div> */}
+
         </div>
     );
 };

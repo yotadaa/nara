@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { ChatBot } from "@/lib/bot";
+import { model } from "@/lib/config";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_ALGORITHM = process.env.JWT_ALGORITHM || "HS256";
-const bot = new ChatBot("gpt-4o-mini");
+const bot = new ChatBot(model);
 
 export async function POST(req) {
     const cookieStore = await cookies(); // HARUS pakai await

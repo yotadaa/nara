@@ -24,6 +24,7 @@ export async function POST() {
             return NextResponse.json({ error: "Invalid token payload" }, { status: 401 });
         }
 
+        console.log("Getting last session")
         // 🔍 Get all sessions for this user
         const sessions = await prisma.sessionChat.findMany({
             where: {

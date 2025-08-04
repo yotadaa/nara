@@ -177,7 +177,7 @@ export const fetchPageWithJS = async (url, maxTimeout = 20000) => {
                 headings: Array.from(safeArea.querySelectorAll("h1, h2")).map((h) =>
                     h.innerText.trim()
                 ),
-                paragraphs: [...textContent, ...imageContent],
+                paragraphs: [...textContent, ...imageContent.slice(15)],
             };
         });
 

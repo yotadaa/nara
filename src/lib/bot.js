@@ -13,13 +13,14 @@ import { cosineSimilarity, getEmbedding } from "./bot/utils";
 import { buildResponseContext } from "./bot/context";
 import { saveChat } from "./bot/save";
 import { fetchPage, fetchPageWithJS } from "@/utils/tools/news";
-import { base_url } from "./config";
+import { base_url, model } from "./config";
+import pLimit from "p-limit";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export const runtime = "nodejs"; // ⬅️ penting untuk streaming
 
 
-export async function shouldUseTools(userInput, current_time, model = "gpt-4o-mini") {
+export async function shouldUseTools(userInput, current_time, model = model) {
     const login = await isLogin();
 
     if (!login) {
@@ -70,7 +71,7 @@ export async function shouldUseTools(userInput, current_time, model = "gpt-4o-mi
 }
 
 export class ChatBot {
-    constructor(model = "gpt-4o-mini") {
+    constructor(model = model) {
         this.model = model;
         this.messages = [
             {
@@ -212,110 +213,143 @@ export class ChatBot {
 
 
 
-    async usingTools(tool, keywords, query) {
-        if (tool === "scientific-journal-search") {
-            const result = await fetchFromNeliti(keywords);
-            return { content: "", data: result };
-        } else if (tool === "web-search") {
-            let results = []
-            const googled = await fetchGoogle(query)
-
-            const fetches = googled.map(result => {
-                const uri = `${base_url}/api/engine/search?url=${encodeURIComponent(result.link)}`
-                console.log(uri)
-                return fetch(uri)
-            }
-
-            );
-
-            const responses = await Promise.all(fetches);
-            const pages = await Promise.all(responses.map(res => res.json()));
-
-            for (const page of pages) {
-                console.log(page?.link, page?.paragraphs?.length)
-                const paragraph = page?.paragraphs;
-                if (paragraph?.length > 2) {
-                    results.push({ content: "", data: page });
-                }
-            }
-
-
-
-            return results;
-        }
-
-        return null;
-    }
-
-    // fetchWithTimeout = async (url, timeout = 10000) => {
-    //     const controller = new AbortController();
-    //     const id = setTimeout(() => controller.abort(), timeout);
-    //     try {
-    //         const res = await fetch(url, { signal: controller.signal });
-    //         return await res.json();
-    //     } catch (e) {
-    //         console.warn("Fetch failed or timed out:", url);
-    //         return null;
-    //     } finally {
-    //         clearTimeout(id);
-    //     }
-    // }
-
-    // withGlobalTimeout = async (promise, timeout = 20000) => {
-    //     return Promise.race([
-    //         promise,
-    //         new Promise(resolve => setTimeout(() => resolve("TIMEOUT"), timeout))
-    //     ]);
-    // }
-
     // async usingTools(tool, keywords, query) {
     //     if (tool === "scientific-journal-search") {
     //         const result = await fetchFromNeliti(keywords);
     //         return { content: "", data: result };
-    //     }
+    //     } else if (tool === "web-search") {
+    //         let results = []
+    //         const googled = await fetchGoogle(query)
 
-    //     if (tool === "web-search") {
-    //         const googled = await fetchGoogle(query);
-    //         const results = [];
-
-    //         const limit = pLimit(3); // Maksimum 3 concurrent
-    //         const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-
-    //         const tasks = googled.map(result => limit(async () => {
-    //             if (results.length >= 4 || !result.link || result.link.includes("reddit.com")) return;
-
-    //             let paragraph = result?.paragraphs;
-    //             let rows = result?.rows;
-
-    //             if ((paragraph?.length || 0) > 2 || (rows?.length || 0) > 1) {
-    //                 results.push({ content: "", data: result });
-    //                 return;
-    //             }
-
-    //             console.log("Trying JS fetch for:", result.link);
-    //             const jsUrl = `${baseUrl}/api/engine/search?url=${encodeURIComponent(result.link)}`;
-    //             const sr = await this.fetchWithTimeout(jsUrl, 10000);
-    //             if (!sr) return;
-
-    //             paragraph = sr?.paragraphs;
-    //             rows = sr?.rows;
-
-    //             if ((paragraph?.length || 0) > 2 || (rows?.length || 0) > 1) {
-    //                 results.push({ content: "", data: sr });
-    //             }
-    //         }));
-
-    //         // Batasi waktu total jadi 20 detik (misalnya)
-    //         const resultSet = await this.withGlobalTimeout(Promise.all(tasks), 20000);
-    //         if (resultSet === "TIMEOUT") {
-    //             console.warn("Search timed out globally.");
+    //         const fetches = googled.map(result => {
+    //             const uri = `${base_url}/api/engine/search?url=${encodeURIComponent(result.link)}`
+    //             console.log(uri)
+    //             return fetch(uri)
     //         }
+
+    //         );
+
+    //         const responses = await Promise.all(fetches);
+    //         const pages = await Promise.all(responses.map(res => res.json()));
+
+    //         for (const page of pages) {
+    //             console.log(page?.link, page?.paragraphs?.length)
+    //             const paragraph = page?.paragraphs;
+    //             if (paragraph?.length > 2) {
+    //                 results.push({ content: "", data: page });
+    //             }
+    //         }
+
+
 
     //         return results;
     //     }
 
     //     return null;
     // }
+
+    fetchWithTimeout = async (url, timeout = 10000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+            const res = await fetch(url, { signal: controller.signal });
+            return await res.json();
+        } catch (e) {
+            console.warn("Fetch failed or timed out:", url);
+            return null;
+        } finally {
+            clearTimeout(id);
+        }
+    }
+
+    withGlobalTimeout = async (promise, timeout = 20000) => {
+        return Promise.race([
+            promise,
+            new Promise(resolve => setTimeout(() => resolve("TIMEOUT"), timeout))
+        ]);
+    }
+
+    async usingTools(tool, keywords, query, source = null) {
+        const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+
+        if (tool === "scientific-journal-search") {
+            const result = await fetchFromNeliti(keywords);
+            return { content: "", data: result };
+        } else if (tool === "web-search") {
+            const googled = await fetchGoogle(query);
+            console.log(googled)
+            const results = [];
+
+            const limit = pLimit(5); // Maksimum 3 concurrent
+
+            try {
+                const tasks = googled.map(result => limit(async () => {
+                    if (results.length >= 4 || !result.link || result.link.includes("reddit.com")) return;
+
+                    let paragraph = result?.paragraphs;
+                    let rows = result?.rows;
+
+                    if ((paragraph?.length || 0) > 2 || (rows?.length || 0) > 1) {
+                        results.push({ content: "", data: result });
+                        return;
+                    }
+
+                    console.log("Trying JS fetch for:", result.link);
+                    const jsUrl = `${baseUrl}/api/engine/search?url=${encodeURIComponent(result.link)}`;
+                    const sr = await this.fetchWithTimeout(jsUrl, 10000);
+                    if (!sr) return;
+
+                    paragraph = sr?.paragraphs;
+                    rows = sr?.rows;
+
+                    if ((paragraph?.length || 0) > 2 || (rows?.length || 0) > 1) {
+                        results.push({ content: "", data: sr });
+                    }
+                }));
+
+                // Batasi waktu total jadi 20 detik (misalnya)
+                const resultSet = await this.withGlobalTimeout(Promise.all(tasks), 20000);
+                if (resultSet === "TIMEOUT") {
+                    console.warn("Search timed out globally.");
+                }
+
+                return results;
+            } catch (e) {
+                console.log(e)
+                return {
+                    data: [
+                        "Terjadi error pada tools. Tidak ada informasi yang didapatkan"
+                    ]
+                }
+            }
+        } else if (tool === "fetch-page") {
+            const link = "https://" + source.split("https://").slice(-1)
+            const jsUrl = `${baseUrl}/api/engine/search?url=${encodeURIComponent(link)}`;
+            console.log("[fetch-page] Final API URL:", jsUrl)
+            const sr = await this.fetchWithTimeout(jsUrl, 10000);
+            if (!sr) {
+                return { data: ["No valid data returned"] };
+            }
+
+            return {
+                data: sr,
+            }
+        } else if (tool === "image-search") {
+            try {
+                const imageUrl = `${baseUrl}/api/engine/image?q=${encodeURIComponent(query)}`
+                const imageResult = await this.fetchWithTimeout(imageUrl, 10000);
+                return {
+                    data: imageResult,
+                }
+            } catch (e) {
+                return {
+                    data: "Terjadi error ketika fetching gambar: " + e.message,
+                }
+            }
+
+        }
+        return null;
+    }
     async ask(userInput, user = "guest", config = {
         scope: -1, additionalContext: "", userId: -1, chatType: 0
     }) {

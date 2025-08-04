@@ -1,16 +1,17 @@
+import { model } from "../config";
 import { calculateCost, cleanNullBytes, countTokens, getEmbedding } from "./utils";
 import { prisma } from "@/lib/prisma";
 
 
-export async function saveChat(role, content, config = { scope: -1, userId: -1, chatType, model: "gpt-4o-mini", metadata: null }, parent = null, chained = null) {
+export async function saveChat(role, content, config = { scope: -1, userId: -1, chatType, model: model, metadata: null }, parent = null, chained = null) {
     // console.log(content.pesan)
     // console.log(userId)
     // console.log(config)
     const embedding = await getEmbedding(content.pesan, config.model);
-    const tokenCount = countTokens(content.messages || [{ content: content.pesan, role }]);
+    const tokenCount = countTokens(content.messages || [{ content: content.pesan, role }], model);
     const cost = role === "user"
-        ? calculateCost(tokenCount, 0)
-        : calculateCost(0, tokenCount);
+        ? calculateCost(tokenCount, 0, model)
+        : calculateCost(0, tokenCount, model);
     const chatType = config.chatType;
     parent = parent;
     let data = {

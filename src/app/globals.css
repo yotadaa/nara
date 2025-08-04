@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* Tambahkan ini ke CSS global kamu (misal: globals.css) */
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.rotate-animation {
+  animation: rotate 1s linear infinite;
+}
+
 .revert-tailwind {
   all: initial;
 }
@@ -32,7 +47,7 @@
 }
 
 .markdown img {
-  @apply rounded my-2;
+  @apply rounded my-2 max-w-[300px];
 }
 
 .markdown table {

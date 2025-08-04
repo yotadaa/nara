@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { ChatBot } from "@/lib/bot";
 import { isLogin } from "@/lib/auth";
 import { buildMetadataContext, buildResponseContext } from "@/lib/bot/context";
+import { model } from "@/lib/config";
 
-const bot = new ChatBot("gpt-4o-mini");
+const bot = new ChatBot(model);
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const runtime = "nodejs";
@@ -18,14 +19,16 @@ export async function POST(req) {
 
     try {
 
-        let { message: userInput, user, config } = await req.json();
+        let { message: userInput, user, config, last_chat } = await req.json();
         const userId = payload.id;
+
+        console.log(last_chat)
 
         bot.rebuildContext(buildResponseContext(user, config.current_datetime));
         config = { ...config, userId }
 
         const additional = userInput
-        const metadataMessage = [{ role: "system", content: buildMetadataContext(user, config.current_datetime, additional) }, { role: "user", content: userInput }];
+        const metadataMessage = [{ role: "system", content: buildMetadataContext(user, config.current_datetime, additional) }, ...last_chat || [], { role: "user", content: userInput }];
 
         console.log("Done storing querstion");
         console.log(userInput)

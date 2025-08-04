@@ -24,6 +24,7 @@ import TypingDots from "../components/TypingDots";
 import rehypeRaw from "rehype-raw";
 import { chain } from "mathjs";
 import ChatBubble from "./Components/ChatBubble";
+import Image from "next/image";
 
 export default function ChatClient({ session_id = -1 }) {
     const [message, setMessage] = useState({
@@ -121,6 +122,7 @@ export default function ChatClient({ session_id = -1 }) {
     }, []);
 
     const loadChat = async (id) => {
+        console.log("Loading Chat")
         // setChats([]);
         const response = await fetch("/api/session/history", {
             method: "POST",
@@ -319,21 +321,19 @@ export default function ChatClient({ session_id = -1 }) {
                 chatType: 0,
             }
         };
-
-        console.log("Message: ", chats
-            .filter(o => o.role === "user")
-            .slice(-3)
-            .map(o => o.content)
-            .join("\n- "));
         const met = await fetch("/api/chat/tools", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                ...data, message: chats
+                ...data,
+                message: msg.content,
+                last_chat: chats
                     .filter(o => o.role === "user")
                     .slice(-3)
-                    .map(o => o.content)
-                    .join("\n- ") + "\n- " + msg.content,
+                    .map(o => ({
+                        role: "user",
+                        content: o.content,
+                    }))
             }),
         });
 
@@ -343,8 +343,12 @@ export default function ChatClient({ session_id = -1 }) {
             metadata: metRes,
         }
 
-        setPlaceholder(p => (JSON.parse(metRes.data).pesan))
 
+        if (metRes.tools === "null") {
+            setPlaceholder(p => (JSON.parse(metRes.data).pesan))
+        }
+
+        // if the logic is present, below code will be ignored
         const response = await sendChat(data);
         return response;
     };
@@ -382,11 +386,19 @@ export default function ChatClient({ session_id = -1 }) {
         <div className="flex bg-gradient-to-b from-fuchsia-950/90 via-blue-950/90 to-gray-950/90 h-[100dvh]">
             {/* Sidebar */}
             <Sidebar user={user} />
-
             {/* Main Content */}
-            <div className="flex-1 flex flex-col relative  ">
+            <div className="flex-1 flex flex-col relative   ">
                 {/* Chat Display */}
-                <MenuButton />
+                <div className="fixed bg-gradient-to-b from-black/20 via-black/10 to-transparent w-full z-[100]">
+                    <MenuButton />
+                    <Image
+                        src="/logo-clean-transparent.png"
+                        alt="Logo"
+                        width={50}
+                        height={50}
+                    />
+                </div>
+
                 <div className="flex-1 flex  flex-col  items-center justify-top py-36 px-5  overflow-y-auto custom-scrollbar  ">
                     {chats.length === 0 ?
                         user ? (
@@ -399,21 +411,24 @@ export default function ChatClient({ session_id = -1 }) {
                                 width={"250px"} />
                         ) : (
                             <div className=" flex flex-col items-center justify-start lg:max-w-[700px] lg:min-w-[700px]">
+
                                 <div className=" flex flex-col gap-5  ">
                                     {chats.map((chat, index) => {
                                         if (chat?.type === 0) {
                                             const markdown = String.raw`${chat.content}`
                                             // console.log(chat)
                                             return (
-                                                <ChatBubble
-                                                    key={index}
-                                                    chat={chat}
-                                                    index={index}
-                                                    isLatest={index === chats.length - 1}
-                                                    chatLoading={chatLoading}
-                                                    placeholder={placeholder}
-                                                />
+                                                <div key={index} >
 
+
+                                                    <ChatBubble
+                                                        chat={chat}
+                                                        index={index}
+                                                        isLatest={index === chats.length - 1}
+                                                        chatLoading={chatLoading}
+                                                        placeholder={placeholder}
+                                                    />
+                                                </div>
                                             );
                                         }
 
@@ -437,19 +452,32 @@ export default function ChatClient({ session_id = -1 }) {
                 <div className="absolute bottom-6 w-full flex justify-center">
                     <div className="w-[90%] md:w-[60%] lg:w-[50%] bg-gray-800/60 backdrop-blur-lg border border-gray-700 rounded-2xl px-4 py-3 flex flex-col items-start gap-0 shadow-lg hover:border-gray-500 transition-all duration-300">
                         {/* Left Add Button */}
-                        <TextareaAutosize
-                            value={message.content}
-                            onChange={(e) => setMessage(
-                                p => ({
-                                    ...p,
-                                    content: e.target.value
-                                }))}
-                            onKeyDown={handleKeyPress}
-                            minRows={1}
-                            maxRows={6}
-                            placeholder="Ask something..."
-                            className="flex items-center px-5 py-2 resize-none bg-transparent w-full outline-none text-white placeholder-gray-400 text-sm md:text-base custom-scrollbar"
-                        />
+                        <div className="flex items-center w-full">
+                            <Image
+                                src="/logo-clean-transparent.png"
+                                alt="Logo"
+                                width={50}
+                                height={50}
+                                className={`
+                                    transition-all duration-500
+                                    ${chatLoading ? "opacity-100 w-fit rotate-animation" : "opacity-0 w-0 scale-75"}
+                                `}
+                            />
+
+                            <TextareaAutosize
+                                value={message.content}
+                                onChange={(e) => setMessage(
+                                    p => ({
+                                        ...p,
+                                        content: e.target.value
+                                    }))}
+                                onKeyDown={handleKeyPress}
+                                minRows={1}
+                                maxRows={6}
+                                placeholder="Ask something..."
+                                className="flex items-center px-5 py-2 resize-none bg-transparent w-full outline-none text-white placeholder-gray-400 text-sm md:text-base custom-scrollbar"
+                            />
+                        </div>
                         <div className="flex items-center justify-between w-full">
                             <div>
                                 <button className={`p-2 hover:bg-white/10 rounded-full transition`}>

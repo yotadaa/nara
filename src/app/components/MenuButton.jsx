@@ -11,8 +11,6 @@ export default function MenuButton() {
         emitter.emit("showSidebar");
     }
 
-    useEffect(() => {
-    }, [show])
 
 
     return (

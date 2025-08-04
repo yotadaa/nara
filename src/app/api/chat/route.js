@@ -5,8 +5,10 @@ import { isLogin } from "@/lib/auth";
 import { saveChat } from "@/lib/bot/save";
 import { buildMetadataContext, buildResponseContext } from "@/lib/bot/context";
 import { usingTOols } from "@/lib/bot/tools";
+import { countTokens } from "@/lib/bot/utils";
+import { model } from "@/lib/config";
 
-const bot = new ChatBot("gpt-4o-mini");
+const bot = new ChatBot(model);
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const runtime = "nodejs";
@@ -53,19 +55,39 @@ export async function POST(req) {
 
         let chained = [];
         if (metadata.tools !== "null" || metadata.tools !== null) {
-            chained = await bot.usingTools(metadata.tools, metadata.keywords, metadata.web_search_query);
+            chained = await bot.usingTools(metadata.tools, metadata.keywords, metadata.web_search_query, metadata.source);
             if (metadata.tools === "web-search" && chained) {
                 console.log(chained)
                 additional += "\n- This is the processed tools data, tambahkan summary lengkap   dari data ini di responmu";
                 additional += "\n- Masukkan gambar ke markdown jika di data ada link gambar\n- Masukkan setiap sumber ke dalam summary\n"
                 for (const d of chained) {
                     const summary = summarizeParagraphs(d.data?.paragraphs);
-                    additional += `-${d.data.url}: ${summary || ""}\n\n`;
-                }
-            } else if (metadata.tools === "scientific-journal-search") {
-                additional += "\n- This is the processed tools data, tambahkan summary lengkap   dari data ini di responmu:" + JSON.stringify(chained.data);
+                    const summaryToken = countTokens([{ content: summary }], model);
+                    let finalSummary = summary;
 
+                    if (summaryToken > 30_000) {
+                        const totalLength = summary.length;
+
+                        const tenPercent = Math.floor(totalLength * 0.1);
+                        const start = summary.slice(0, tenPercent);
+
+                        const midStartIndex = Math.floor(totalLength / 2 - tenPercent / 2);
+                        const middle = summary.slice(midStartIndex, midStartIndex + tenPercent);
+
+                        const end = summary.slice(totalLength - tenPercent);
+
+                        finalSummary = `${start}\n...\n${middle}\n...\n${end}`;
+                    }
+                    additional += `-${d.data.url}: ${finalSummary || ""}\n\n`;
+                }
+            } else {
+                if (metadata.tools === "fetch-page") {
+                    additional += "\n- Jika terjadi masalah saat fetching link, return kembali link tersebut ke user agar user bisa check sendiri.\n";
+                }
+                additional += "\n- This is the processed tools data, deskripsikan data ini ke user:" + JSON.stringify(chained?.data);
             }
+
+
         }
 
         console.log("Getting Respond...");
@@ -132,7 +154,7 @@ async function chatWithoutJSON(bot, messages) {
 
 }
 
-function summarizeParagraphs(paragraphs, portion = 0.2) {
+function summarizeParagraphs(paragraphs, portion = 0.1) {
     if (!Array.isArray(paragraphs) || paragraphs.length === 0) return "";
 
     // Filter hanya teks asli, bukan URL gambar
