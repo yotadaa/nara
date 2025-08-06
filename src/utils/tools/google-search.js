@@ -60,6 +60,7 @@ export async function fetchGoogle(query, api = null) {
         source: o.displayLink,
         snippet: o.snippet,
         link: o.link,
+        pagemap: o.pagemap,
     })) || [];
 
     // If too few results, try page 2

@@ -242,6 +242,7 @@ export default function ChatClient({ session_id = -1 }) {
                 const decoder = new TextDecoder();
                 let assistantMessage = "";
                 let chainedData = null;
+                let currentId = null;
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -251,17 +252,14 @@ export default function ChatClient({ session_id = -1 }) {
                     console.log(chunk)
 
                     // Pisahkan konten biasa dan chained
-                    if (chunk.includes("[CHAINED]")) {
-                        const [beforeChained, afterChained] = chunk.split("[CHAINED]");
-                        // console.log(afterChained)
-                        assistantMessage += beforeChained;
 
-                        try {
-                            chainedData = JSON.parse(afterChained);
-                            console.log(chainedData)
-                        } catch (e) {
-                            // console.error("Gagal parse chained JSON:", afterChained);
-                        }
+                    if (chunk.includes("[ID]")) {
+                        const [a, b] = chunk.split("[ID]");
+                        const [current_id, last_chunk] = b.split("[IDEND]")
+                        currentId = parseInt(current_id);
+
+                        assistantMessage += a.trim();;
+
                     } else {
                         assistantMessage += chunk;
                     }
@@ -272,12 +270,45 @@ export default function ChatClient({ session_id = -1 }) {
                             role: "assistant",
                             content: assistantMessage,
                             type: 0,
-                            data: chainedData, // pasang di sini
+                            // data: chainedData, // pasang di sini
                         };
                         // console.log(updated[updated.length - 1])
                         return updated;
                     });
                 }
+
+                if (currentId) {
+                    console.log("id:", currentId)
+                    const chatData = await fetch('/api/data', {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ id: parseInt(currentId), column: "data" }),
+                    });
+
+                    try {
+                        // idk why this didnt trigger re render
+                        // the display didnt updated to show the data
+                        const result = await chatData.json();
+                        console.log(result)
+                        setChats((prev) => {
+                            const updated = [...prev];
+                            updated[updated.length - 1] = {
+                                ...updated[updated.length - 1],
+                                data: result.data?.data,
+                                metadata: result.data?.metadata
+                            };
+                            console.log(updated)
+                            return updated;
+                        });
+                    } catch (e) {
+                        console.log(e)
+                    }
+
+                }
+
+
 
                 setChatLoading(false);
                 setPlaceholder("")
@@ -453,7 +484,7 @@ export default function ChatClient({ session_id = -1 }) {
                     <div className="w-[90%] md:w-[60%] lg:w-[50%] bg-gray-800/60 backdrop-blur-lg border border-gray-700 rounded-2xl px-4 py-3 flex flex-col items-start gap-0 shadow-lg hover:border-gray-500 transition-all duration-300">
                         {/* Left Add Button */}
                         <div className="flex items-center w-full">
-                            <Image
+                            {/* <Image
                                 src="/logo-clean-transparent.png"
                                 alt="Logo"
                                 width={50}
@@ -462,7 +493,7 @@ export default function ChatClient({ session_id = -1 }) {
                                     transition-all duration-500
                                     ${chatLoading ? "opacity-100 w-fit rotate-animation" : "opacity-0 w-0 scale-75"}
                                 `}
-                            />
+                            /> */}
 
                             <TextareaAutosize
                                 value={message.content}

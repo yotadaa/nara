@@ -33,11 +33,11 @@ export async function POST(req) {
         console.log("Building Context...")
         let additional = `- Your previous response:\n- Question: ${userInput}\n\n- Answer: ${metadata.pesan}\n\n Answer related to the previous response.`;
 
-        if (metadata.tools) {
-            additional += "\n- You previously used toosl: " + metadata.tools + "\n- Just welcome the user in this response"
+        if (metadata.tools && metadata.tools !== undefined) {
+            additional += "\n- You previously used tools: " + metadata.tools + "\n- Just welcome the user in this response"
         }
 
-        console.log(metadata)
+        console.log(metadata);
         config = { ...config, userId }
 
         console.log("Getting Relevant Chats...")
@@ -54,9 +54,9 @@ export async function POST(req) {
 
 
         let chained = [];
-        if (metadata.tools !== "null" || metadata.tools !== null) {
+        if (metadata.tools !== "null" || metadata.tools !== null || metadata.tools !== undefined) {
             chained = await bot.usingTools(metadata.tools, metadata.keywords, metadata.web_search_query, metadata.source);
-            if (metadata.tools === "web-search" && chained) {
+            if (metadata.tools === "web-search") {
                 console.log(chained)
                 additional += "\n- This is the processed tools data, tambahkan summary lengkap   dari data ini di responmu";
                 additional += "\n- Masukkan gambar ke markdown jika di data ada link gambar\n- Masukkan setiap sumber ke dalam summary\n"
@@ -81,12 +81,18 @@ export async function POST(req) {
                     additional += `-${d.data.url}: ${finalSummary || ""}\n\n`;
                 }
             } else {
+                if (metadata.tools !== "video-search") {
+                    additional += "\n- This is the processed tools data, deskripsikan data ini ke user:" + JSON.stringify(chained?.data);
+                }
                 if (metadata.tools === "fetch-page") {
                     additional += "\n- Jika terjadi masalah saat fetching link, return kembali link tersebut ke user agar user bisa check sendiri.\n";
                 }
-                additional += "\n- This is the processed tools data, deskripsikan data ini ke user:" + JSON.stringify(chained?.data);
+                if (metadata.tools === "video-search") {
+                    bot.model = "gpt-4o-mini";
+                    additional += "\n- Berikut data dari hasil pencarian: " + JSON.stringify(chained?.data?.map(({ title, link }) => ({ title, link })))
+                    // additional += `\n tidak perlu memberikan summary panjang dan list untuk pesan ini.\n`;
+                }
             }
-
 
         }
 
@@ -105,14 +111,16 @@ export async function POST(req) {
                     controller.enqueue(encoder.encode(content));
                 }
 
-                await saveChat("assistant", {
+                const saved_chat = await saveChat("assistant", {
                     pesan: fullResponse, tools: config.tools, messages: [
                         ...combinedMessage, { role: "assistant", content: fullResponse }
                     ]
                 }, { ...config, metadata }, question.id, chained);
-                if (metadata.tools === "scientific-journal-search") {
-                    const chainedMessage = "[CHAINED] " + JSON.stringify(chained);
-                    controller.enqueue(encoder.encode(chainedMessage));
+                if (saved_chat) {
+                    const idMessage = `[ID] ${saved_chat.id} [IDEND]`;//[CHAINED] ` + JSON.stringify(chained);
+                    controller.enqueue(encoder.encode(idMessage));
+                }
+                if (metadata.tools !== undefined && metadata.tools !== null && metadata.tools) {
                 }
                 controller.close();
             }
@@ -131,6 +139,25 @@ export async function POST(req) {
         return NextResponse.json({ error: "Failed to process chat" }, { status: 500 });
     }
 }
+
+const messages = [
+    {
+        role: "user",
+        content: "Halo apa kabar!"
+    },
+    {
+        role: "assistant",
+        content: "Halo mukhatada! kabar saya baik",
+    },
+    {
+        role: "user",
+        content: "Halo apa kabar!"
+    },
+    {
+        role: "assistant",
+        content: "Halo mukhatada! kabar saya baik",
+    },
+]
 
 
 async function chatWithoutJSON(bot, messages) {
@@ -151,7 +178,6 @@ async function chatWithoutJSON(bot, messages) {
             ]
         }
     }
-
 }
 
 function summarizeParagraphs(paragraphs, portion = 0.1) {

@@ -10,18 +10,28 @@ export function buildResponseContext(user = "guest", current_datetime, additiona
     else timeOfDay = "night";
 
     return `
-Kamu adalah asisten cerdas, ramah, dan informatif. Tugasmu adalah **membalas pesan pengguna** dengan bahasa alami dan menggunakan **markdown formatting**. 
+Kamu adalah asisten cerdas, ramah, dan informatif. Tugasmu adalah **membalas pesan pengguna** dengan bahasa alami dan menggunakan **markdown formatting**.
 
-** Additional Context **
-1. Adjust your respond based on additional context: ${additional}
+**Additional Context**
+1. Adjust your response based on additional context: ${additional}
 
 - Nama pengguna: ${user}
 - Waktu sekarang: ${date} (${timeOfDay})
 
+**ALWAYS USE LATEX FOR FORMULA** / **SELALU GUNAKAN LATEX UNTUK RUMUS**
+Berikut contohnya:
+Here's a math formula inline: $E = mc^2$  
+And here's a block one:
+
+$$
+\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
+$$
 
 - Contoh markdown: \`**Tentu!** Ini penjelasannya:\n\n- Point A\n- Point B\`
 - Jangan gunakan format JSON. Fokus hanya pada memberikan balasan bermanfaat dan ramah.
-- Jika kamu tidak yakin, tanyakan kembali pada pengguna.`;
+- Jika kamu tidak yakin, tanyakan kembali pada pengguna.
+`;
+
 }
 
 
@@ -47,7 +57,7 @@ Tugas kamu adalah melakukan **ekstraksi metadata dari pesan pengguna**. Jawaban 
         "topic": "general | technology | science | education | other",
         "keywords": ["list", "of", "relevant", "keywords"]
     },
-    "tools": "scientific-journal-search | web-search | fetch-page | image-search | null" -> // choose one,
+    "tools": "scientific-journal-search | web-search | fetch-page | image-search | video-search | null" -> // choose one,
     "keywords": "string of search keywords if any",
     "source": "e.g. https://tempo.co or null",
     "web_search_query": "advanced google search query if relevant, otherwise empty string,"
@@ -77,6 +87,8 @@ Berikut pedoman penggunaan tools:
 - Jangan gunakan **web-search** untuk pertanyaan pengetahuan umum yang bersifat **statis**, seperti definisi konsep, sejarah, atau informasi yang tidak berubah.
 - Gunakan **fetch-page** jika user memintamu untuk check link, masukkan link yang diberikan user ke **source** HANYA LINK.
 - Gunakan **image-search** hanya jika user memintamu mencari gambar, masukkan query gambar ke **web_search_query**.
+- Gunakan **video-search** hanya jika user meminta untuk mencari video, masukkan query video ke **web_search_query**.
+- Query untuk **video-search** tidak perlu menggunakan special query seperti filetype: atau site:
 - Jika menggunakan tools, masukkan juga kata kunci yang digunakan dalam kolom **keywords**.
 
 Contoh situasi penggunaan tools:

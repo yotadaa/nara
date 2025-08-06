@@ -15,6 +15,7 @@ import { saveChat } from "./bot/save";
 import { fetchPage, fetchPageWithJS } from "@/utils/tools/news";
 import { base_url, model } from "./config";
 import pLimit from "p-limit";
+import { re } from "mathjs";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export const runtime = "nodejs"; // ⬅️ penting untuk streaming
@@ -347,6 +348,24 @@ export class ChatBot {
                 }
             }
 
+        } else {
+            if (tool === "video-search") {
+                const video_link = `${baseUrl}/api/engine/google?q=${encodeURIComponent(
+                    query +
+                    " site:youtube.com OR site:vimeo.com OR site:dailymotion.com OR site:facebook.com OR site:instagram.com OR site:tiktok.com"
+                )}`;
+                const video_result = await this.fetchWithTimeout(video_link, 10000);
+                console.log(video_result);
+                const result = video_result.map(o => ({
+                    ...o
+                    // thumbnail: o?.pagemap?.cse_thumbnail[0]?.src | "not-found"
+                }));
+
+                return {
+                    data: result,
+                };
+
+            }
         }
         return null;
     }

@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+.katex-display {
+  overflow-x: auto;
+  max-width: 100%;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 400px) {
+  .katex-display {
+    font-size: 0.75rem;
+  }
+}
+
 /* Tambahkan ini ke CSS global kamu (misal: globals.css) */
 @keyframes rotate {
   0% {

@@ -15,10 +15,14 @@ export async function GET(request) {
     const cx2 = process.env.GOOGLE_SEARCH_CX_2;
 
     const fetchWith = async (key, cx) => {
-        const makeUrl = (start) =>
-            `https://customsearch.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&searchType=image&as_rights=(cc_publicdomain%7Ccc_attribute%7Ccc_sharealike%7Ccc_nonderived).-(cc_noncommercial)&q=${query}&start=${start}`;
+        const makeUrl = (start) => {
+            const url = `https://customsearch.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&searchType=image&as_rights=(cc_publicdomain%7Ccc_attribute%7Ccc_sharealike%7Ccc_nonderived).-(cc_noncommercial)&q=${query}&start=${start}`;
+            console.log(url)
+            return url;
+        }
 
-        const urls = [1, 10, 20, 30].map(makeUrl);
+
+        const urls = [0, 10, 20, 30].map(makeUrl);
 
         const responses = await Promise.all(urls.map(url => fetch(url)));
         const datas = await Promise.all(responses.map(res => res.json()));
@@ -27,14 +31,23 @@ export async function GET(request) {
         const allFailed = datas.every(data => data.error);
         if (allFailed) throw new Error("All requests failed with this API key");
 
+        const seenSources = new Set();
+
         const allItems = datas.flatMap(data => data.items || []);
-        return allItems.map(item => ({
+        const filteredItems = allItems.filter(item => {
+            if (seenSources.has(item.displayLink)) return false;
+            seenSources.add(item.displayLink);
+            return true;
+        });
+
+        return filteredItems.map(item => ({
             title: item.title,
             htmlTitle: item.htmlTitle,
             imageLink: item.link,
             mime: item.mime,
             source: item.displayLink,
         }));
+
     };
 
     try {

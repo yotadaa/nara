@@ -6,7 +6,7 @@ import { model } from "@/lib/config";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_ALGORITHM = process.env.JWT_ALGORITHM || "HS256";
-const bot = new ChatBot(model);
+const bot = new ChatBot("gpt-4o-mini");
 
 export async function PUT(req) {
     const cookieStore = await cookies(); // HARUS pakai await
